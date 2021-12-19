@@ -102,6 +102,6 @@ event new_connection(c: connection)
 
 event zeek_done()
 {
-    for (i in track_callback) 
-        print fmt ("%s - %s", i, track_callback[i]);
+    #for (i in track_callback) 
+        #print fmt ("%s - %s", i, track_callback[i]);
 }
