@@ -1,0 +1,6 @@
+[package]
+description=zeek package to identify log4j exploit attempts for  CVE-2021-44228
+script_dir = scripts
+version = 0.1 
+tags = 
+test_command = ( cd tests && btest -d )
