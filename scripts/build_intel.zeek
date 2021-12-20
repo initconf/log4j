@@ -1,9 +1,7 @@
 module Log4j;
 
-export {
-
-
-}
+@load frameworks/intel/seen
+@load frameworks/intel/do_notice
 
 global already_seen_callbackip: set[addr] &create_expire=1 mins &backend=Broker::MEMORY;
 
