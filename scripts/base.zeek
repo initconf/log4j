@@ -39,9 +39,7 @@ global Log4j::parse_payload: event (cid: conn_id, s: string);
 global Log4j::build_intel:   event (cid: conn_id, p: PayloadParts);
 
 
-# borrowed shamelessly from corelights package
-# and modified significantly to handle implicit 80/tcp
-# as well as domain names in callback URLs! 
+#modified to handle implicit 80/tcp
 
 event Log4j::parse_payload(cid: conn_id, s: string)
     {
@@ -54,6 +52,8 @@ event Log4j::parse_payload(cid: conn_id, s: string)
 
     #local domain_regex = /\/\/[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6}\/?/;
     local domain_regex = /[A-Za-z0-9]+([\-\.]{1}[A-Za-z0-9]+)*\.[a-zA-Z]{2,6}\/?[A-Za-z0-9]+/; 
+    #if (/A-Za-z/ in stem)
+    #print fmt ("stem is: %s", stem);
 
     local path=safe_split1_w_default(uri,/\//,1);
 

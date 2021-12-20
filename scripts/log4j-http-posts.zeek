@@ -4,16 +4,18 @@ export {
 
         redef enum Notice::Type += {
             POST,
-            UserAgent,
-	        CallBackIP,
+            Attempt,
+	    CallBackIP,
             CallBack,
             } ;
 
-    global log4j_postBody = /jndi:ldap|\{\$.*\}/;
+    global log4j_postBody = /jndi:ldap|\{\$.*\}|jndi/;
 
 	  const ip_regex = /([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4})*)?)::(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4})*)?)|(([0-9A-Fa-f]{1,4}:){6,6})([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)|(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4})*)?)::(([0-9A-Fa-f]{1,4}:)*)([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)|([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?/;
-
     }
+
+
+global already_seen_callbackip: set[addr] &create_expire=1 mins &backend=Broker::MEMORY;
 
 event http_request(c: connection, method: string, original_URI: string, unescaped_URI: string, version: string) &priority=3
     {
@@ -32,14 +34,18 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 event http_header(c: connection, is_orig: bool, name: string, value: string) &priority=5
 {
 
-    if ( (name == "USER-AGENT" || name == "REFERRER" || name == "COOKIE") && log4j_postBody in value )
-    {
-        NOTICE([$note=UserAgent, $conn=c, $src=c$id$orig_h,
-                $msg=fmt("Malicious user agent %s seen from host %s", value, c$id$orig_h)]);
+    if ( log4j_postBody !in value)
+        return ;
+
+    #if ( (name == "USER-AGENT" || name == "REFERRER" || name == "COOKIE") && log4j_postBody in value )
+    #{
+    #print fmt ("%s - %s", name, value);
+        NOTICE([$note=Attempt, $conn=c, $src=c$id$orig_h,
+                $msg=fmt("Malicious %s %s seen from host %s", name, value, c$id$orig_h)]);
                 #$identifier=cat(c$id$orig_h), $suppress_for=1 day]);
 
         event Log4j::parse_payload(c$id, value);
-    }
+    #}
 }
 
 event Log4j::build_intel (cid: conn_id, payload: PayloadParts)
@@ -52,9 +58,14 @@ event Log4j::build_intel (cid: conn_id, payload: PayloadParts)
 
     Intel::insert(a_item);
 
-    NOTICE([$note=CallBackIP, $id=cid, $src=payload$host,
+    if (cid$orig_h !in already_seen_callbackip)
+    {
+    NOTICE([$note=CallBackIP, $id=cid, $src=cid$orig_h,
                 $msg=fmt("Callback IP [%s] seen from host %s with payload of [%s]", payload$host,  cid$orig_h, payload),
-                $identifier=cat(payload$host), $suppress_for=1 day]);
+                $identifier=cat(cid), $suppress_for=1 day]);
+
+    add already_seen_callbackip [cid$orig_h];
+    }
     }
 
     # 4. sensitive_URL
@@ -102,6 +113,6 @@ event new_connection(c: connection)
 
 event zeek_done()
 {
-    #for (i in track_callback) 
-        #print fmt ("%s - %s", i, track_callback[i]);
+    for (i in track_callback) 
+        print fmt ("track-callback: %s - %s", i, track_callback[i]);
 }
