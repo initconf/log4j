@@ -10,12 +10,21 @@ export {
 
     global track_callback: table[ip_port] of  conn_id  ; # &backend=Broker::MEMORY;
 
+        redef enum Notice::Type += {
+            POST,
+            Attempt,
+            CallBackIP,
+            CallBack,
+            } ;
+
+    global log4j_postBody = /jndi:ldap|\{\$.*\}|\{\$jndi:|\$\{jndi:/;
+
     }
 
 
 # Borrowed shamelessly from corelight's heuristic
-
 # If split doesn't return the expected number of indices, return the default "-"
+
 function safe_split1_w_default(s: string, p: pattern, idx: count, missing: string &default="-"): string
     {
     local tmp = split_string1(s, p);
@@ -25,8 +34,7 @@ function safe_split1_w_default(s: string, p: pattern, idx: count, missing: strin
         return missing;
     }
 
-# I've modified this to use addr, port instead of strings
-
+# I've modified this from corelight's one to use addr, port instead of strings
 type PayloadParts: record {
     uri: string;
     uri_path: string ;
