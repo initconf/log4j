@@ -10,15 +10,9 @@ export {
 
     global track_callback: table[ip_port] of  conn_id  ; # &backend=Broker::MEMORY;
 
-        redef enum Notice::Type += {
-            POST,
-            Attempt,
-            CallBackIP,
-            CallBack,
-            } ;
-
     global log4j_postBody = /jndi:ldap|\{\$.*\}|\{\$jndi:|\$\{jndi:/;
 
+    global malware_domains: set[string] &redef ;
     }
 
 
@@ -41,13 +35,16 @@ type PayloadParts: record {
     stem: string;
     host: addr;
     port_: port;
+    domain: string;
     };
 
 global Log4j::parse_payload: event (cid: conn_id, s: string);
 global Log4j::build_intel:   event (cid: conn_id, p: PayloadParts);
 
 
-#modified to handle implicit 80/tcp
+# modified corelights to handle implicit 80/tcp
+# also modified to resolve domains to IPs
+# also modified to event to handle race-conditions on host resolution
 
 event Log4j::parse_payload(cid: conn_id, s: string)
     {
@@ -59,7 +56,7 @@ event Log4j::parse_payload(cid: conn_id, s: string)
     local stem = safe_split1_w_default(uri, /\//, 0);
 
     #local domain_regex = /\/\/[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6}\/?/;
-    local domain_regex = /[A-Za-z0-9]+([\-\.]{1}[A-Za-z0-9]+)*\.[a-zA-Z]{2,6}\/?[A-Za-z0-9]+/; 
+    local domain_regex = /[A-Za-z0-9]+([\-\.]{1}[A-Za-z0-9]+)*\.[a-zA-Z]{2,6}\/?[A-Za-z0-9]+/;
     #if (/A-Za-z/ in stem)
     #print fmt ("stem is: %s", stem);
 
@@ -81,7 +78,8 @@ event Log4j::parse_payload(cid: conn_id, s: string)
             if (|h| > 0)
                 for (i in h)
                 {
-                    local a = PayloadParts($uri=uri, $uri_path=path, $stem=stem, $host=i , $port_=port_);
+                    local a = PayloadParts($uri=uri, $uri_path=path, $stem=stem, $host=i , $port_=port_,$domain=ph);
+                    add malware_domains [ph];
                     event Log4j::build_intel( cid,a);
                 }
         }
@@ -89,8 +87,9 @@ event Log4j::parse_payload(cid: conn_id, s: string)
     else
         host = to_addr(safe_split1_w_default(stem, /\:/, 0));
 
-        if (host != 0.0.0.0)  
-        { 
+        # avoid repeats
+        if (host != 0.0.0.0)
+        {
         local b = PayloadParts($uri=uri, $uri_path=path, $stem=stem, $host=host , $port_=port_);
         event Log4j::build_intel( cid,b);
         }

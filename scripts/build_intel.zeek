@@ -5,8 +5,17 @@ module Log4j;
 
 global already_seen_callbackip: set[addr] &create_expire=1 mins &backend=Broker::MEMORY;
 
+export {
+		redef enum Notice::Type += {
+			CallBackIP,
+			CallBack,
+		} ;
+}
+
 event Log4j::build_intel (cid: conn_id, payload: PayloadParts)
 {
+
+    # 1. Intel::ADDR - malware callback IPs
     if (payload?$host)
     {
 		local a_item: Intel::Item = [$indicator=fmt("%s", payload$host),
@@ -17,7 +26,7 @@ event Log4j::build_intel (cid: conn_id, payload: PayloadParts)
 
 		if (cid$orig_h !in already_seen_callbackip)
 		{
-				NOTICE([$note=CallBackIP, $id=cid, $src=cid$orig_h,
+				NOTICE([$note=CallBackIP, $id=cid, $src=payload$host,
 					$msg=fmt("Callback IP [%s] seen from host %s with payload of [%s]", payload$host,  cid$orig_h, payload),
 					$identifier=cat(cid), $suppress_for=1 day]);
 
@@ -25,12 +34,13 @@ event Log4j::build_intel (cid: conn_id, payload: PayloadParts)
     	}
     }
 
-    # 4. sensitive_URL
+    # 2. Intel::URL - sensitive_URL
     a_item = [$indicator=fmt("%s", payload$uri), $indicator_type = Intel::URL,
                 $meta = [$source = "log4jScript", $desc="URL of log4j callback"] ];
 
     Intel::insert(a_item);
 
+    # 3 Intel::DOMAIN : If stem is a domain name
     if (! is_valid_ip(payload$stem) )
     {
     a_item = [$indicator=fmt("%s", payload$stem), $indicator_type =
@@ -40,7 +50,7 @@ event Log4j::build_intel (cid: conn_id, payload: PayloadParts)
 
     }
 
-    # 2. Watch callback IP+port
+    # 4. Watch callback IP+port
     local a: ip_port = [$ip=payload$host, $p=payload$port_] ;
 
     if (a !in track_callback)

@@ -1,5 +1,12 @@
 module Log4j;
 
+export {
+		redef enum Notice::Type += {
+				POST,
+				Attempt,
+		} ;
+}
+
 event http_request(c: connection, method: string, original_URI: string, unescaped_URI: string, version: string) &priority=3
     {
             if ( method == "POST"
