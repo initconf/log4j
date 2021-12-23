@@ -1,5 +1,0 @@
-log4j.HTTP-POSTS
-log4j.Many-User-Agents
-log4j.multiple-name-values
-log4j.obfuscated-regexp
-log4j.scan-and-callback

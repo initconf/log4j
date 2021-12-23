@@ -47,6 +47,9 @@ event new_connection(c: connection)
         local resp=c$id$resp_h;
         local dport = c$id$resp_p;
 
+	if (resp in Site::local_nets)
+		return; 
+
         local a:ip_port=[$ip=resp, $p=dport];
 
         if (a in track_callback)
