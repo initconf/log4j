@@ -25,7 +25,7 @@ This should generate following Kinds of notices:
 
         - Log4j::Attempt
         - Log4j::CallBackIP
-        -  Log4j::CallBack
+        - Log4j::CallBack
 
 Example notice: 
 ***************************
